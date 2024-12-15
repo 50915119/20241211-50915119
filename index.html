@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>股票、空氣品質與人口密度資料</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #7b2ff7, #ff4b2b);
+      color: #fff;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background-color: #1c1c1c;
+      padding: 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+    }
+
+    nav {
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    nav button {
+      background-color: #ff4b2b;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      margin: 0 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background-color 0.3s ease;
+    }
+
+    nav button:hover {
+      background-color: #7b2ff7;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .loading {
+      text-align: center;
+      font-size: 1.2rem;
+      color: #ddd;
+    }
+
+    .table-container {
+      margin: 20px auto;
+      max-width: 1000px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      background-color: #333;
+      color: white;
+      transition: border-color 0.3s ease;
+    }
+
+    input:focus {
+      border-color: #ff4b2b;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      color: #fff;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: center;
+      border: 1px solid #444;
+      cursor: pointer;
+    }
+
+    th {
+      background-color: #222;
+    }
+
+    th:hover {
+      background-color: #ff4b2b;
+    }
+
+    td {
+      background-color: #333;
+    }
+
+    td:hover {
+      background-color: #444;
+    }
+
+    tr:hover {
+      background-color: rgba(255, 75, 43, 0.5);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: #222;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .modal input, .modal button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+
+    .modal button {
+      background-color: #ff4b2b;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .modal button:hover {
+      background-color: #7b2ff7;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <button onclick="showPage('stocks')">股票資料</button>
+    <button onclick="showPage('aqi')">空氣品質</button>
+    <button onclick="showPage('population')">人口密度資料</button>
+  </nav>
+
+  <!-- 股票資料 -->
+  <div id="stocksPage">
+    <h1>股票當天資料</h1>
+    <input id="stockSearchInput" type="text" placeholder="輸入股票代號或名稱進行查詢..." oninput="filterStockTable()" />
+    <div id="stockStatus" class="loading">正在載入資料...</div>
+    <table id="stockTable" class="hidden">
+      <thead>
+        <tr>
+          <th onclick="sortStockTable('Code')">股票代號</th>
+          <th onclick="sortStockTable('Name')">股票名稱</th>
+          <th onclick="sortStockTable('TradeVolume')">成交量</th>
+          <th onclick="sortStockTable('TradeValue')">成交金額</th>
+          <th onclick="sortStockTable('OpeningPrice')">開盤價</th>
+          <th onclick="sortStockTable('HighestPrice')">最高價</th>
+          <th onclick="sortStockTable('LowestPrice')">最低價</th>
+          <th onclick="sortStockTable('ClosingPrice')">收盤價</th>
+          <th onclick="sortStockTable('Change')">漲跌</th>
+          <th onclick="sortStockTable('Transaction')">成交筆數</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 空氣品質資料 -->
+  <div id="aqiPage" class="hidden">
+    <h1>空氣品質資料</h1>
+    <input id="aqiSearchInput" type="text" placeholder="輸入測站名稱或縣市進行查詢..." oninput="filterAqiTable()" />
+    <div id="aqiStatus" class="loading">正在載入資料...</div>
+    <table id="aqiTable" class="hidden">
+      <thead>
+        <tr>
+          <th onclick="sortAqiTable('county')">縣市</th>
+          <th onclick="sortAqiTable('sitename')">測站名稱</th>
+          <th onclick="sortAqiTable('aqi')">空氣品質指標</th>
+          <th onclick="sortAqiTable('status')">狀態</th>
+          <th onclick="sortAqiTable('pollutant')">污染物</th>
+          <th onclick="sortAqiTable('pm2.5')">PM2.5</th>
+          <th onclick="sortAqiTable('publishtime')">發布時間</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 人口密度資料 -->
+  <div id="populationPage" class="hidden">
+    <h1>人口密度資料</h1>
+    <input id="populationSearchInput" type="text" placeholder="輸入區域名稱進行查詢..." oninput="filterPopulationTable()" />
+    <div id="populationStatus" class="loading">正在載入資料...</div>
+    <table id="populationTable" class="hidden">
+      <thead>
+        <tr>
+          <th onclick="sortPopulationTable('site_id')">區域名稱</th>
+          <th onclick="sortPopulationTable('people_total')">年底人口數</th>
+          <th onclick="sortPopulationTable('area')">土地面積</th>
+          <th onclick="sortPopulationTable('population_density')">人口密度</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    // 頁面切換
+    function showPage(page) {
+      document.getElementById('stocksPage').classList.toggle('hidden', page !== 'stocks');
+      document.getElementById('aqiPage').classList.toggle('hidden', page !== 'aqi');
+      document.getElementById('populationPage').classList.toggle('hidden', page !== 'population');
+    }
+
+    // 股票資料
+    let stockData = [];
+    async function fetchStockData() {
+      const apiUrl = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL";
+      const stockStatus = document.getElementById("stockStatus");
+      const stockTable = document.getElementById("stockTable");
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error("股票資料載入失敗");
+
+        stockData = await response.json();
+        renderStockTable(stockData);
+
+        stockStatus.classList.add("hidden");
+        stockTable.classList.remove("hidden");
+      } catch (error) {
+        stockStatus.textContent = `載入失敗: ${error.message}`;
+      }
+    }
+
+    let stockSortOrder = {}; // 儲存每個欄位的排序順序
+
+    function sortStockTable(column) {
+      if (!stockSortOrder[column]) {
+        stockSortOrder[column] = 'desc'; // 初始排序為降序
+      } else {
+        stockSortOrder[column] = stockSortOrder[column] === 'desc' ? 'asc' : 'desc'; // 切換排序順序
+      }
+
+      stockData.sort((a, b) => {
+        const valueA = isNaN(a[column]) ? a[column] : parseFloat(a[column]);
+        const valueB = isNaN(b[column]) ? b[column] : parseFloat(b[column]);
+
+        if (valueA < valueB) return stockSortOrder[column] === 'asc' ? -1 : 1;
+        if (valueA > valueB) return stockSortOrder[column] === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderStockTable(stockData);
+    }
+
+    function renderStockTable(data) {
+      const tbody = document.getElementById("stockTable").querySelector("tbody");
+      tbody.innerHTML = "";
+      data.forEach(stock => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${stock.Code}</td>
+          <td>${stock.Name}</td>
+          <td>${stock.TradeVolume}</td>
+          <td>${stock.TradeValue}</td>
+          <td>${stock.OpeningPrice}</td>
+          <td>${stock.HighestPrice}</td>
+          <td>${stock.LowestPrice}</td>
+          <td>${stock.ClosingPrice}</td>
+          <td>${stock.Change}</td>
+          <td>${stock.Transaction}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function filterStockTable() {
+      const query = document.getElementById("stockSearchInput").value.toLowerCase();
+      const filtered = stockData.filter(stock =>
+        stock.Code.toLowerCase().includes(query) || stock.Name.toLowerCase().includes(query)
+      );
+      renderStockTable(filtered);
+    }
+
+    // 空氣品質資料
+    let aqiData = [];
+    async function fetchAqiData() {
+      const apiUrl = "https://data.moenv.gov.tw/api/v2/aqx_p_432?api_key=e8dd42e6-9b8b-43f8-991e-b3dee723a52d&limit=1000&sort=ImportDate desc&format=JSON";
+      const aqiStatus = document.getElementById("aqiStatus");
+      const aqiTable = document.getElementById("aqiTable");
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error("空氣品質資料載入失敗");
+
+        const result = await response.json();
+        aqiData = result.records;
+        renderAqiTable(aqiData);
+
+        aqiStatus.classList.add("hidden");
+        aqiTable.classList.remove("hidden");
+      } catch (error) {
+        aqiStatus.textContent = `載入失敗: ${error.message}`;
+      }
+    }
+
+    let aqiSortOrder = {}; // 儲存每個欄位的排序順序
+
+    function sortAqiTable(column) {
+      if (!aqiSortOrder[column]) {
+        aqiSortOrder[column] = 'desc'; // 初始排序為降序
+      } else {
+        aqiSortOrder[column] = aqiSortOrder[column] === 'desc' ? 'asc' : 'desc'; // 切換排序順序
+      }
+
+      aqiData.sort((a, b) => {
+        const valueA = isNaN(a[column]) ? a[column] : parseFloat(a[column]);
+        const valueB = isNaN(b[column]) ? b[column] : parseFloat(b[column]);
+
+        if (valueA < valueB) return aqiSortOrder[column] === 'asc' ? -1 : 1;
+        if (valueA > valueB) return aqiSortOrder[column] === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderAqiTable(aqiData);
+    }
+
+    function renderAqiTable(data) {
+      const tbody = document.getElementById("aqiTable").querySelector("tbody");
+      tbody.innerHTML = "";
+      data.forEach(record => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${record.county || 'N/A'}</td>
+          <td>${record.sitename || 'N/A'}</td>
+          <td>${record.aqi || 'N/A'}</td>
+          <td>${record.status || 'N/A'}</td>
+          <td>${record.pollutant || 'N/A'}</td>
+          <td>${record["pm2.5"] || 'N/A'}</td>
+          <td>${record.publishtime || 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function filterAqiTable() {
+      const query = document.getElementById("aqiSearchInput").value.toLowerCase();
+      const filtered = aqiData.filter(record =>
+        (record.county && record.county.toLowerCase().includes(query)) ||
+        (record.sitename && record.sitename.toLowerCase().includes(query))
+      );
+      renderAqiTable(filtered);
+    }
+
+    // 人口密度資料
+    let populationData = [];
+    async function fetchPopulationData() {
+      const apiUrl = "https://od.moi.gov.tw/api/v1/rest/datastore/301000000A-000605-071";
+      const populationStatus = document.getElementById("populationStatus");
+      const populationTable = document.getElementById("populationTable");
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) throw new Error("人口密度資料載入失敗");
+
+        const result = await response.json();
+        populationData = result.result.records;
+        renderPopulationTable(populationData);
+
+        populationStatus.classList.add("hidden");
+        populationTable.classList.remove("hidden");
+      } catch (error) {
+        populationStatus.textContent = `載入失敗: ${error.message}`;
+      }
+    }
+    let populationSortOrder = {}; // 儲存每個欄位的排序順序
+
+    function sortPopulationTable(column) {
+      if (!populationSortOrder[column]) {
+        populationSortOrder[column] = 'desc'; // 初始排序為降序
+      } else {
+        populationSortOrder[column] = populationSortOrder[column] === 'desc' ? 'asc' : 'desc'; // 切換排序順序
+      }
+
+      populationData.sort((a, b) => {
+        const valueA = isNaN(a[column]) ? a[column] : parseFloat(a[column]);
+        const valueB = isNaN(b[column]) ? b[column] : parseFloat(b[column]);
+
+        if (valueA < valueB) return populationSortOrder[column] === 'asc' ? -1 : 1;
+        if (valueA > valueB) return populationSortOrder[column] === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      renderPopulationTable(populationData);
+    }
+
+    function renderPopulationTable(data) {
+      const tbody = document.getElementById("populationTable").querySelector("tbody");
+      tbody.innerHTML = "";
+      data.forEach(record => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${record.site_id || 'N/A'}</td>
+          <td>${record.people_total || 'N/A'}</td>
+          <td>${record.area || 'N/A'}</td>
+          <td>${record.population_density || 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    
+
+    function filterPopulationTable() {
+      const query = document.getElementById("populationSearchInput").value.toLowerCase();
+      const filtered = populationData.filter(record =>
+        (record.site_id && record.site_id.toLowerCase().includes(query))
+      );
+      renderPopulationTable(filtered);
+    }
+
+    // 頁面載入後自動獲取數據
+    window.onload = function() {
+      showPage('stocks');
+      fetchStockData();
+      fetchAqiData();
+      fetchPopulationData();
+    }
+  </script>
+</body>
+</html>
